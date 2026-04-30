@@ -1,0 +1,19 @@
+# Environment variables
+.env
+
+# Python virtual environment
+.venv/
+venv/
+
+# Cache files
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+
+# Logs
+*.log
+
+# Vector DB (optional if large)
+vector_db/
