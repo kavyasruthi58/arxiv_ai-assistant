@@ -8,6 +8,8 @@ CHROMA_PATH = os.path.join(BASE_DIR, "vector_db", "chroma")
 COLLECTION_NAME = "arxiv_papers"
 
 _model = None
+_client = None
+_collection = None
 
 
 def get_model():
@@ -17,32 +19,42 @@ def get_model():
     return _model
 
 
-client = chromadb.PersistentClient(path=CHROMA_PATH)
+def get_collection():
+    global _client, _collection
 
-try:
-    collection = client.get_collection(name=COLLECTION_NAME)
-except Exception:
-    raise RuntimeError(
-        "\nVector store not found!\n"
-        "Please run embedder.py first to build the ChromaDB index.\n"
-        "Command: python src/embedder.py"
-    )
+    if _collection is not None:
+        return _collection
+
+    if not os.path.exists(CHROMA_PATH):
+        raise RuntimeError(
+            f"\nVector DB folder not found at: {CHROMA_PATH}\n"
+            "Make sure vector_db/chroma is pushed to GitHub."
+        )
+
+    _client = chromadb.PersistentClient(path=CHROMA_PATH)
+
+    try:
+        _collection = _client.get_collection(name=COLLECTION_NAME)
+    except Exception as e:
+        raise RuntimeError(
+            f"\nChromaDB collection '{COLLECTION_NAME}' not found.\n"
+            f"Chroma path used: {CHROMA_PATH}\n"
+            "Please rebuild the vector database locally and push vector_db to GitHub.\n"
+            "Command: python src/embedder.py"
+        ) from e
+
+    return _collection
 
 
 def search_papers(query, top_k=10, fetch_k=50):
     """
     Search ChromaDB and return the top unique papers.
-
-    top_k:
-        Final number of unique papers returned.
-
-    fetch_k:
-        Number of raw chunks retrieved before removing duplicate papers.
-        Higher fetch_k improves diversity because many chunks may come
-        from the same paper.
     """
+
     if not query or not query.strip():
         return [], [], []
+
+    collection = get_collection()
 
     query_embedding = get_model().encode(query).tolist()
 
@@ -81,7 +93,7 @@ def search_papers(query, top_k=10, fetch_k=50):
 if __name__ == "__main__":
     query = input("Ask a research question: ")
 
-    docs, metas, distances = search_papers(query, top_k=10, fetch_k=30)
+    docs, metas, distances = search_papers(query, top_k=10, fetch_k=50)
 
     if not docs:
         print("No relevant results found. Try a different query.")

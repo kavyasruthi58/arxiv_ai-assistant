@@ -14,6 +14,3 @@ __pycache__/
 
 # Logs
 *.log
-
-# Vector DB (optional if large)
-vector_db/
